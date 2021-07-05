@@ -90,7 +90,7 @@ class TrainDataset(data.Dataset):
         self.dir_LR = '{}input/'.format(dir)
         self.lis = sorted(os.listdir(self.dir_HR))
         self.crop_size = 64
-        self.scale = 4
+        self.scale = 2
         self.transform = transforms.Compose([RandomCrop(self.crop_size, self.scale),
                                              DataAug(),
                                              ToTensor()])
@@ -136,7 +136,7 @@ class TestDataset(data.Dataset):
         self.sub_path = sub_path
         self.lis = sorted(os.listdir('{}{}/'.format(self.dir_HR, self.sub_path)))
         self.crop_size = 64
-        self.scale = 4
+        self.scale = 2
         self.transform = transforms.Compose([ToTensor()])
 
     def __len__(self):
