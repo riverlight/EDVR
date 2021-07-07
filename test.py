@@ -11,7 +11,7 @@ from dataset import get_test_set
 parser = argparse.ArgumentParser(description='PyTorch Super Res Example')
 parser.add_argument('--input_path', type=str, default='datasets/test/', help='input path to use')
 parser.add_argument('--sub_path', type=str, default='jie/', help='sub path, example 000, 011, 015, 020')
-parser.add_argument('--model', type=str, default='checkpoints/model_best.pth', help='model file to use')
+parser.add_argument('--model', type=str, default='checkpoints/model_x2_best.pth', help='model file to use')
 parser.add_argument('--output_path', default='results/', type=str, help='where to save the output image')
 parser.add_argument('--cuda', default=True, action='store_true', help='use cuda')
 opt = parser.parse_args()
@@ -50,6 +50,7 @@ with torch.no_grad():
     for iteration, batch in enumerate(training_data_loader, 1):
         print('processing image [{}]'.format(img_num))
         input, target = batch[0], batch[1]
+        print(input.shape, target.shape)
         if opt.cuda:
             input = input.cuda()
         out = model(input)

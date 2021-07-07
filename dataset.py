@@ -155,6 +155,7 @@ class TestDataset(data.Dataset):
             center_index = idx
         else:
             center_index = 0
+        center_index = idx
 
         frames_hr_name = '{}{}'.format(folder_path, img_list[center_index])
         frames_hr = cv.imread(frames_hr_name)
@@ -162,9 +163,16 @@ class TestDataset(data.Dataset):
         frames_lr = np.zeros((5, int(h / self.scale), int(w / self.scale), ch))
         for j in range(center_index - 2, center_index + 3):  # only use 5 frames
             i = j - center_index + 2
+            if j<0:
+                j = 0
+            elif j>=len(img_list):
+                j = len(img_list) - 1
             frames_lr_name = '{}{}/{}'.format(self.dir_LR, self.sub_path, img_list[j])
+            print(idx, i, j, frames_lr_name)
             img = cv.imread(frames_lr_name)
             frames_lr[i, :, :, :] = img  # t h w c
+        # if idx==5:
+        #     exit(0)
 
         sample = {'lr': frames_lr, 'hr': frames_hr, 'im_name': img_list[center_index]}
         sample = self.transform(sample)
