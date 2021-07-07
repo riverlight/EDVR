@@ -4,6 +4,8 @@ from torch.nn import functional as F
 
 from modules.modulated_deform_conv import _ModulatedDeformConv
 from modules.modulated_deform_conv import ModulatedDeformConvPack
+import functools
+import module_util as mutil
 
 channels = 64
 
@@ -76,6 +78,56 @@ class DCNv2Pack(ModulatedDeformConvPack):
 
 
 # DCNv2Pack = ModulatedDeformConvPack
+
+
+
+class Predeblur_ResNet_Pyramid(nn.Module):
+    def __init__(self, nf=128, HR_in=False):
+        """
+        HR_in: True if the inputs are high spatial size
+        :param nf:
+        :param HR_in:
+        """
+
+        super(Predeblur_ResNet_Pyramid, self).__init__()
+        self.HR_in = True if HR_in else False
+        if self.HR_in:
+            self.conv_first_1 = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
+            self.conv_first_2 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
+            self.conv_first_3 = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
+        else:
+            self.conv_first = nn.Conv2d(3, nf, 3, 1, 1, bias=True)
+        basic_block = functools.partial(mutil.ResidualBlock_noBN, nf=nf)
+        self.RB_L1_1 = basic_block()
+        self.RB_L1_2 = basic_block()
+        self.RB_L1_3 = basic_block()
+        self.RB_L1_4 = basic_block()
+        self.RB_L1_5 = basic_block()
+        self.RB_L2_1 = basic_block()
+        self.RB_L2_2 = basic_block()
+        self.RB_L3_1 = basic_block()
+        self.deblur_L2_conv = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
+        self.deblur_L3_conv = nn.Conv2d(nf, nf, 3, 2, 1, bias=True)
+
+        self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
+
+    def forward(self, x):
+        if self.HR_in:
+            L1_fea = self.lrelu(self.conv_first_1(x))
+            L1_fea = self.lrelu(self.conv_first_2(L1_fea))
+            L1_fea = self.lrelu(self.conv_first_3(L1_fea))
+        else:
+            L1_fea = self.lrelu(self.conv_first(x))
+        L2_fea = self.lrelu(self.deblur_L2_conv(L1_fea))
+        L3_fea = self.lrelu(self.deblur_L3_conv(L2_fea))
+        L3_fea = F.interpolate(
+            self.RB_L3_1(L3_fea), scale_factor=2, mode='bilinear', align_corners=False)
+        L2_fea = self.RB_L2_1(L2_fea) + L3_fea
+        L2_fea = F.interpolate(
+            self.RB_L2_2(L2_fea), scale_factor=2, mode='bilinear', align_corners=False)
+        L1_fea = self.RB_L1_2(self.RB_L1_1(L1_fea)) + L2_fea
+        out = self.RB_L1_5(self.RB_L1_4(self.RB_L1_3(L1_fea)))
+        return out
 
 class PCDAlignment(nn.Module):
     """Alignment module using Pyramid, Cascading and Deformable convolution
@@ -321,8 +373,8 @@ class EDVR(nn.Module):
                  num_reconstruct_block=10,
                  center_frame_idx=2,
                  hr_in=False,
-                 with_predeblur=False,
-                 with_tsa=True,
+                 with_predeblur=True,
+                 with_tsa=False,
                  scale=2):
         super(EDVR, self).__init__()
         if center_frame_idx is None:
@@ -335,7 +387,8 @@ class EDVR(nn.Module):
         self.scale = scale
 
         # extract features for each frame
-
+        self.predeblur = Predeblur_ResNet_Pyramid(nf=num_feat, HR_in=self.hr_in)
+        self.conv_1x1 = nn.Conv2d(num_feat, num_feat, 1, 1, bias=True)
         self.conv_first = nn.Conv2d(num_in_ch, num_feat, 3, 1, 1)
 
         # extrat pyramid features

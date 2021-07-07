@@ -91,14 +91,16 @@ class TrainDataset(data.Dataset):
         self.lis = sorted(os.listdir(self.dir_HR))
         self.crop_size = 64
         self.scale = 2
+        self.factor = 10
         self.transform = transforms.Compose([RandomCrop(self.crop_size, self.scale),
                                              DataAug(),
                                              ToTensor()])
 
     def __len__(self):
-        return len(self.lis)
+        return len(self.lis)*self.factor
 
     def __getitem__(self, idx):
+        # idx = idx // self.factor
         folder_list = sorted(listdir(self.dir_HR))
         folder_index = random.randint(0, (len(folder_list) - 1))
         folder_name = folder_list[folder_index]

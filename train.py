@@ -23,7 +23,7 @@ parser.add_argument("--dataset", default='datasets/', type=str, help="dataset pa
 parser.add_argument("--batchSize", type=int, default=1, help="training batch size")  # default 16
 parser.add_argument("--nEpochs", type=int, default=10000, help="number of epochs to train for")
 parser.add_argument("--lr", type=float, default=4e-4, help="Learning Rate. Default=1e-4")
-parser.add_argument("--step", type=int, default=1000,
+parser.add_argument("--step", type=int, default=10,
                     help="Sets the learning rate to the initial LR decayed by momentum every n epochs, Default: n=10")
 parser.add_argument("--cuda", default=True, action="store_true", help="use cuda?")
 parser.add_argument("--resume", default='', type=str,
@@ -113,7 +113,8 @@ def main():
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10"""
     # lr = opt.lr
-    lr = opt.lr * (0.1 ** (epoch // opt.step))
+    lr = opt.lr * (0.5 ** (epoch // opt.step))
+    lr = lr if lr > 1e-5 else 1e-5
     print('lr{}  iter:'.format(lr, n_iter))
     return lr
 
